@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>垃圾不迷路 | 未來版</title>
+    <style>
+        /* --- 風格定義：科技環保風 --- */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* 深海漸層 */
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --neon-green: #00ff9d;
+            --neon-blue: #00e1ff;
+            --text-main: #ffffff;
+            --text-dim: #a0a0a0;
+        }
+
+        /* 改用微軟正黑體/黑體，確保中文顯示好看 */
+        * { box-sizing: border-box; font-family: 'Microsoft JhengHei', 'PingFang TC', 'Heiti TC', sans-serif; }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 背景動態光點 (裝飾用) */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+        }
+        .orb-1 { width: 300px; height: 300px; background: var(--neon-green); top: -50px; left: -50px; }
+        .orb-2 { width: 400px; height: 400px; background: #2c3e50; bottom: -100px; right: -100px; }
+
+        /* --- 主容器 --- */
+        .dashboard {
+            width: 95%;
+            height: 90%;
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* 左寬右窄 */
+            gap: 20px;
+            max-width: 1600px;
+        }
+
+        /* --- 通用玻璃面板樣式 --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- 左側：掃描核心區 --- */
+        .scanner-section {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+            border-left: 4px solid var(--neon-green);
+            padding-left: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+
+        /* 掃描框 */
+        .scanner-frame {
+            width: 80%;
+            height: 60%;
+            border: 2px solid var(--glass-border);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .scanner-frame:hover {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+        }
+
+        /* 掃描線動畫 */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            top: 0;
+            left: 0;
+            animation: scan 2s linear infinite;
+            display: none; /* 預設隱藏 */
+        }
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        #previewImg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .placeholder-text {
+            text-align: center;
+            color: var(--text-dim);
+        }
+        .icon-large { font-size: 3rem; margin-bottom: 10px; display: block; }
+
+        /* 操作按鈕 */
+        .action-bar {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.3s;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        
+        .btn:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        /* 結果覆蓋層 (Overlay) */
+        .result-overlay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--neon-blue);
+            padding: 20px;
+            border-radius: 8px;
+            width: 320px;
+            transform: translateX(120%); /* 預設隱藏在右邊 */
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+        .result-overlay.show {
+            transform: translateX(0);
+        }
+        .res-type { color: var(--neon-blue); font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 5px;}
+        .res-name { font-size: 2rem; margin: 0 0 10px 0; font-weight: bold; }
+        .res-desc { font-size: 1rem; color: #ddd; line-height: 1.5; }
+
+        /* --- 右側：數據流 --- */
+        .data-section {
+            position: relative;
+        }
+
+        .section-header {
+            font-size: 1rem;
+            color: var(--text-dim);
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+        .led { width: 8px; height: 8px; background: #555; border-radius: 50%; box-shadow: 0 0 5px #555; transition: 0.3s;}
+        .led.active { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+
+        .log-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            /* 自定義捲軸 */
+            scrollbar-width: thin;
+            scrollbar-color: var(--glass-border) transparent;
+        }
+
+        .log-item {
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-left: 3px solid transparent;
+            font-family: 'Courier New', monospace; /* 像程式碼一樣 */
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .log-item.recycle { border-left-color: var(--neon-green); }
+        .log-item.trash { border-left-color: #ff4757; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .time-stamp { color: var(--text-dim); font-size: 0.8rem; }
+
+        /* RWD 手機版 */
+        @media (max-width: 900px) {
+            body { height: auto; overflow-y: auto; padding: 20px 0; }
+            .dashboard { display: flex; flex-direction: column; height: auto; }
+            .glass-panel { min-height: 400px; }
+            .result-overlay { position: relative; width: 100%; bottom: 0; right: 0; transform: none; margin-top: 20px; display: none; }
+            .result-overlay.show { display: block; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="dashboard">
+        
+        <div class="glass-panel scanner-section">
+            <div class="header-title">垃圾不迷路系統 v2.0</div>
+            
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            
+            <div class="scanner-frame" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="scan-line" id="scanLine"></div>
+                <img id="previewImg">
+                <div class="placeholder-text" id="placeholder">
+                    <span class="icon-large">⛶</span>
+                    <div>請上傳目標影像</div>
+                    <div style="font-size:0.8rem; margin-top:5px; color:var(--neon-blue);">[ 點擊開啟相機模組 ]</div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn" id="analyzeBtn">啟動 AI 辨識程序</button>
+            </div>
+
+            <div class="result-overlay" id="resultOverlay">
+                <div class="res-type" id="resType">偵測類別：</div>
+                <div class="res-name" id="resName">未知</div>
+                <div style="height: 2px; width: 100%; background: #333; margin: 10px 0;">
+                    <div id="confidenceBar" style="height: 100%; width: 0%; background: var(--neon-blue); transition: width 1s;"></div>
+                </div>
+                <div class="res-desc" id="resDesc">系統待命中，請輸入數據...</div>
+            </div>
+        </div>
+
+        <div class="glass-panel data-section">
+            <div class="section-header">
+                <span>// 雲端資料庫串流</span>
+                <div class="status-indicator">
+                    <div class="led" id="dbLed"></div>
+                    <span id="dbStatus">連線中...</span>
+                </div>
+            </div>
+            
+            <div class="log-container" id="logContainer">
+                </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // 🔥 Firebase 設定 (使用你的最新 Key)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCWZle7J1h3ad0MHoLXMYSn2tSTyG54uhc",
+            authDomain: "project-270891431847735655.firebaseapp.com",
+            projectId: "project-270891431847735655",
+            storageBucket: "project-270891431847735655.firebasestorage.app",
+            messagingSenderId: "195607846159",
+            appId: "1:195607846159:web:590cd5436fdcd664e9727a"
+        };
+
+        let db;
+
+        // Init Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log("🔥 Firebase 已連接至新專案！");
+            document.getElementById('dbLed').classList.add('active');
+            document.getElementById('dbStatus').innerText = "連線正常";
+            document.getElementById('dbStatus').style.color = "var(--neon-green)";
+        } catch (e) {
+            console.error(e);
+            document.getElementById('dbStatus').innerText = "連線錯誤";
+            document.getElementById('dbStatus').style.color = "#ff4757";
+        }
+
+        // --- UI Logic ---
+        const fileInput = document.getElementById('fileInput');
+        const previewImg = document.getElementById('previewImg');
+        const placeholder = document.getElementById('placeholder');
+        const scanLine = document.getElementById('scanLine');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resultOverlay = document.getElementById('resultOverlay');
+
+        // Image Preview
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    previewImg.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    resultOverlay.classList.remove('show'); // 隱藏舊結果
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Analyze Logic (Simulation)
+        analyzeBtn.addEventListener('click', async () => {
+            if(!fileInput.files[0]) {
+                alert(">> 系統錯誤：未檢測到影像來源");
+                return;
+            }
+
+            // Start Animation
+            scanLine.style.display = 'block';
+            analyzeBtn.innerText = "掃描分析中...";
+            analyzeBtn.disabled = true;
+
+            setTimeout(async () => {
+                // Mock Results (中文版模擬資料)
+                const mockData = [
+                    { name: "寶特瓶 (PET)", type: "recycle", desc: "偵測到 PET 材質。屬於高價值回收物，請壓扁減少體積後回收。" },
+                    { name: "紙餐盒", type: "recycle", desc: "紙纖維與塑膠淋膜。請務必清除廚餘並沖洗乾淨，再丟入紙容器回收。" },
+                    { name: "髒污衛生紙", type: "trash", desc: "具有生物汙染風險，且纖維過短無法回收。請丟入一般垃圾。" },
+                    { name: "鋁罐", type: "recycle", desc: "金屬合金材質。可無限次回收，請丟入金屬回收桶。" }
+                ];
+                const result = mockData[Math.floor(Math.random() * mockData.length)];
+                const confidence = Math.floor(Math.random() * 15) + 85;
+
+                // Stop Animation
+                scanLine.style.display = 'none';
+                analyzeBtn.innerText = "啟動 AI 辨識程序";
+                analyzeBtn.disabled = false;
+
+                // Show Result
+                const typeText = result.type === 'recycle' ? '資源回收' : '一般垃圾';
+                document.getElementById('resType').innerText = `偵測類別：[ ${typeText} ]`;
+                document.getElementById('resType').style.color = result.type === 'recycle' ? 'var(--neon-green)' : '#ff4757';
+                document.getElementById('resName').innerText = result.name;
+                document.getElementById('resDesc').innerText = result.desc;
+                document.getElementById('confidenceBar').style.width = confidence + "%";
+                resultOverlay.classList.add('show');
+
+                // Write to Firestore
+                if(db) {
+                    try {
+                        await addDoc(collection(db, "history"), {
+                            itemName: result.name,
+                            type: result.type,
+                            timestamp: serverTimestamp()
+                        });
+                        console.log("✅ 數據已寫入雲端");
+                    } catch(e) { 
+                        console.error("寫入錯誤 (請檢查 Firestore 權限):", e); 
+                    }
+                }
+
+            }, 2000); // 2 seconds scan time
+        });
+
+        // --- Realtime Data Listener ---
+        if(db) {
+            const q = query(collection(db, "history"), orderBy("timestamp", "desc"), limit(15));
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById('logContainer');
+                container.innerHTML = "";
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const div = document.createElement('div');
+                    div.className = `log-item ${data.type}`; // adds 'recycle' or 'trash' class
+                    
+                    // Simple time formatter
+                    let timeStr = "剛剛";
+                    if(data.timestamp) {
+                        const date = data.timestamp.toDate();
+                        timeStr = `${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+                    }
+
+                    div.innerHTML = `
+                        <div>
+                            <span style="font-weight:bold; color:white;">${data.itemName}</span>
+                            <br>
+                            <span style="font-size:0.7rem; color:#aaa;">ID: ${doc.id.substring(0,6)}...</span>
+                        </div>
+                        <div class="time-stamp">${timeStr}</div>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
